@@ -8,19 +8,76 @@
 
 <body>
 
+<h2 style="padding:10px">MiniBrawl 🔥</h2>
+
 <div class="box">
+    <input id="nick" placeholder="Ник">
+    <input id="email" placeholder="Email">
+    <input id="pass" type="password" placeholder="Пароль">
 
-<h2>MiniBrawl 🔥</h2>
-
-<input id="nick" placeholder="Ник">
-<input id="email" placeholder="Email">
-<input id="pass" type="password" placeholder="Пароль">
-
-<button onclick="register()">Регистрация</button>
-<button onclick="login()">Вход</button>
-
+    <button onclick="reg()">Регистрация</button>
+    <button onclick="login()">Вход</button>
 </div>
 
-<script type="module" src="script.js"></script>
+<script type="module">
+
+import { auth, db } from "./firebase.js";
+
+import {
+createUserWithEmailAndPassword,
+signInWithEmailAndPassword
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+
+import {
+ref, set
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+// 🔥 РЕГИСТРАЦИЯ
+window.reg = function(){
+
+    let nick = document.getElementById("nick").value;
+    let email = document.getElementById("email").value;
+    let pass = document.getElementById("pass").value;
+
+    if(!nick || !email || !pass){
+        alert("Заполни всё!");
+        return;
+    }
+
+    createUserWithEmailAndPassword(auth,email,pass)
+    .then(userCred=>{
+
+        // сохраняем ник
+        set(ref(db,"users/"+userCred.user.uid),{
+            nickname: nick
+        });
+
+        alert("Регистрация успешна 🔥");
+
+        // 👉 ТЕПЕРЬ ПЕРЕХОД В МЕНЮ
+        location.href="knop.html";
+
+    })
+    .catch(err=>alert(err.message));
+};
+
+// 🔐 ВХОД
+window.login = function(){
+
+    let email = document.getElementById("email").value;
+    let pass = document.getElementById("pass").value;
+
+    signInWithEmailAndPassword(auth,email,pass)
+    .then(()=>{
+
+        // 👉 ТЕПЕРЬ ПЕРЕХОД В МЕНЮ
+        location.href="knop.html";
+
+    })
+    .catch(err=>alert(err.message));
+};
+
+</script>
+
 </body>
 </html>
