@@ -1,151 +1,71 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MiniBrawl</title>
+  <meta charset="UTF-8">
+  <title>Чат</title>
 
-<style>
-body{
-    margin:0;
-    font-family:sans-serif;
-    background:#0f1e2e;
-    color:white;
-}
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial;
+      background: #0b1f2e;
+      color: white;
+    }
 
-.top{
-    background:#2f8fb3;
-    padding:15px;
-    text-align:center;
-    font-size:20px;
-}
+    h1 {
+      text-align: center;
+      padding: 15px;
+    }
 
-.menu{
-    display:flex;
-    justify-content:space-around;
-    padding:10px;
-    background:#14283b;
-}
+    #chat {
+      padding: 10px;
+      margin-bottom: 80px;
+    }
 
-.menu button{
-    padding:10px;
-    border:none;
-    border-radius:10px;
-    background:#2f8fb3;
-    color:white;
-}
+    .msg {
+      background: #2c3e50;
+      margin: 10px;
+      padding: 10px;
+      border-radius: 10px;
+    }
 
-#chat{
-    padding:10px;
-}
+    .sendBox {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      display: flex;
+    }
 
-.msg{
-    background:#2a3f55;
-    margin:5px 0;
-    padding:10px;
-    border-radius:10px;
-}
+    input {
+      flex: 1;
+      padding: 15px;
+      border: none;
+      outline: none;
+      font-size: 16px;
+    }
 
-.input{
-    position:fixed;
-    bottom:0;
-    width:100%;
-    display:flex;
-}
-
-.input input{
-    flex:1;
-    padding:15px;
-    border:none;
-}
-
-.input button{
-    width:80px;
-    border:none;
-    background:#2f8fb3;
-    color:white;
-}
-</style>
+    button {
+      width: 80px;
+      background: #4da3c7;
+      border: none;
+      color: white;
+      font-size: 18px;
+    }
+  </style>
 </head>
 
 <body>
 
-<div class="top">MiniBrawl 🔥</div>
+<h1>💬 Чат</h1>
 
-<!-- 🔥 МЕНЮ -->
-<div class="menu">
-    <button onclick="location.href='chat.html'">💬 Чат</button>
-    <button onclick="location.href='qqa.html'">🎮 Игры</button>
-    <button onclick="location.href='txt.html'">📝 Посты</button>
-</div>
-
-<!-- ЧАТ -->
 <div id="chat"></div>
 
-<div class="input">
-    <input id="msg" placeholder="Сообщение">
-    <button onclick="send()">➤</button>
+<div class="sendBox">
+  <input id="msg" placeholder="Сообщение">
+  <button onclick="send()">▶</button>
 </div>
 
-<script type="module">
-
-import { auth, db } from "./firebase.js";
-
-import {
-onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-
-import {
-ref, push, onValue, set, get
-} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
-
-let nickname = "Без имени";
-
-// 🔥 получаем ник
-onAuthStateChanged(auth, async (user)=>{
-    if(user){
-        let snap = await get(ref(db,"users/"+user.uid));
-        if(snap.exists()){
-            nickname = snap.val().nickname;
-        }
-    } else {
-        location.href="index.html";
-    }
-});
-
-// 🔥 отправка
-window.send = function(){
-
-    let text = document.getElementById("msg").value;
-    if(!text) return;
-
-    push(ref(db,"chat"),{
-        name: nickname,
-        text: text
-    });
-
-    document.getElementById("msg").value="";
-};
-
-// 🔥 загрузка чата
-onValue(ref(db,"chat"), (snap)=>{
-
-    let chat = document.getElementById("chat");
-    chat.innerHTML="";
-
-    snap.forEach(data=>{
-        let msg = data.val();
-
-        chat.innerHTML += `
-        <div class="msg">
-            <b>${msg.name}</b><br>
-            ${msg.text}
-        </div>
-        `;
-    });
-
-});
-
-</script>
+<script type="module" src="chat.js"></script>
 
 </body>
 </html>
