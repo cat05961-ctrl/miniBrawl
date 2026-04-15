@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="style.css">
+<title>TXT Посты</title>
+</head>
+
+<body>
+
+<h2 style="padding:10px">📝 Посты / TXT</h2>
+
+<div class="box">
+    <textarea id="text" placeholder="Напиши пост..."></textarea>
+    <input type="file" id="file" accept=".txt">
+    <button onclick="add()">Выложить</button>
+</div>
+
+<hr>
+
+<div id="posts"></div>
+
+<script type="module">
+
+import { auth, db, storage } from "./firebase.js";
+
+import {
+onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+
+import {
+ref, push, onChildAdded, get
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+import {
+ref as sRef, uploadBytes, getDownloadURL
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-storage.js";
+
+let nick = "";
+
+// 🔐 проверка входа
+onAuthStateChanged(auth, async user=>{
+    if(!user){
+        location.href="index.html";
+        return;
+    }
+
+    let snap = await get(ref(db,"users/"+user.uid));
+    nick = snap.exists() ? snap.val().nickname : "User";
+});
+
+// ➕ добавить пост или txt
+window.add = async function(){
+
+    let text = document.getElementById("text").value;
+    let file = document.getElementById("file").files[0];
+
+    if(!text && !file){
+        alert("Напиши текст или выбери файл!");
+        return;
+    }
+
+    let fileURL = "";
+
+    if(file){
+        let storageRef = sRef(storage,"txt/"+file.name);
+        await uploadBytes(storageRef,file);
+        fileURL = await getDownloadURL(storageRef);
+    }
+
+    push(ref(db,"txtPosts"),{
+        text: text,
+        file: fileURL,
+        user: nick
+    });
+
+    alert("Пост добавлен 🔥");
+
+    document.getElementById("text").value="";
+    document.getElementById("file").value="";
+};
+
+// 📥 загрузка постов
+const posts = document.getElementById("posts");
+
+onChildAdded(ref(db,"txtPosts"), snap=>{
+    let p = snap.val();
+
+    let div = document.createElement("div");
+    div.className = "post";
+
+    div.innerHTML = `
+    <b>${p.user}</b><br><br>
+    ${p.text || ""}<br><br>
+    ${p.file ? `<a href="${p.file}">📄 Скачать TXT</a>` : ""}
+    `;
+
+    posts.appendChild(div);
+});
+
+</script>
+
+</body>
+</html>

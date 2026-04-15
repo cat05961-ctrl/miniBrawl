@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="style.css">
+<title>Добавить игру</title>
+</head>
+
+<body>
+
+<h2 style="padding:10px">🎮 Добавить игру</h2>
+
+<div class="box">
+    <input id="title" placeholder="Название игры">
+    <textarea id="desc" placeholder="Описание"></textarea>
+    <input type="file" id="file">
+    <button onclick="add()">Выложить</button>
+</div>
+
+<script type="module">
+
+import { auth, db, storage } from "./firebase.js";
+
+import {
+onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+
+import {
+ref, push, get
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+import {
+ref as sRef, uploadBytes, getDownloadURL
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-storage.js";
+
+let nick = "";
+let uid = "";
+
+// 🔐 проверка входа
+onAuthStateChanged(auth, async user=>{
+    if(!user){
+        alert("Сначала войди!");
+        location.href="index.html";
+        return;
+    }
+
+    uid = user.uid;
+
+    let snap = await get(ref(db,"users/"+uid));
+    nick = snap.exists() ? snap.val().nickname : "User";
+});
+
+// 🎮 добавление игры
+window.add = async function(){
+
+    let title = document.getElementById("title").value;
+    let desc = document.getElementById("desc").value;
+    let file = document.getElementById("file").files[0];
+
+    if(!title || !desc){
+        alert("Заполни всё!");
+        return;
+    }
+
+    let url = "";
+
+    if(file){
+        let storageRef = sRef(storage, "games/" + file.name);
+        await uploadBytes(storageRef, file);
+        url = await getDownloadURL(storageRef);
+    }
+
+    push(ref(db,"posts"),{
+        title: title,
+        desc: desc,
+        file: url,
+        user: nick,
+        uid: uid,
+        likes: 0,
+        views: 0
+    });
+
+    alert("Игра добавлена 🔥");
+
+    // очистка
+    document.getElementById("title").value="";
+    document.getElementById("desc").value="";
+    document.getElementById("file").value="";
+};
+
+</script>
+
+</body>
+</html>
