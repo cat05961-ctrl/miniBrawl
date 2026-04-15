@@ -2,11 +2,51 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="style.css">
-</head>
-<body>
+<title>Чат</title>
 
-<div class="header">💬 Чат</div>
+<style>
+body {
+    margin:0;
+    background:#0f1e2e;
+    color:white;
+    font-family:Arial;
+}
+
+#chat {
+    height:85vh;
+    overflow:auto;
+    padding:10px;
+}
+
+.msg {
+    background:#2a3b4c;
+    padding:10px;
+    margin:5px;
+    border-radius:10px;
+}
+
+.chatBox {
+    display:flex;
+    position:fixed;
+    bottom:0;
+    width:100%;
+}
+
+.chatBox input {
+    flex:1;
+    padding:12px;
+}
+
+.chatBox button {
+    padding:12px;
+    background:#3aa0c9;
+    border:none;
+    color:white;
+}
+</style>
+</head>
+
+<body>
 
 <div id="chat"></div>
 
@@ -15,8 +55,61 @@
 <button onclick="sendMsg()">➤</button>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
-<script src="app.js"></script>
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { getDatabase, ref, push, onChildAdded, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDY_GF8Adf1WyTyX91dVSGXRisxvxDyEWc",
+  authDomain: "minibrawl-478a3.firebaseapp.com",
+  databaseURL: "https://minibrawl-478a3-default-rtdb.firebaseio.com",
+  projectId: "minibrawl-478a3"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+// проверка входа
+onAuthStateChanged(auth, user => {
+    if (!user) location.href = "index.html";
+});
+
+// отправка
+window.sendMsg = async function () {
+    let text = document.getElementById("msg").value;
+    let user = auth.currentUser;
+
+    if (!text) return;
+
+    let snap = await get(ref(db, "users/" + user.uid));
+    let nick = snap.val()?.nickname || "Без имени";
+
+    push(ref(db, "chat"), {
+        msg: text,
+        user: nick
+    });
+
+    document.getElementById("msg").value = "";
+};
+
+// получение
+const chat = document.getElementById("chat");
+
+onChildAdded(ref(db, "chat"), snap => {
+    let data = snap.val();
+
+    let div = document.createElement("div");
+    div.className = "msg";
+    div.innerHTML = `<b>${data.user}</b><br>${data.msg}`;
+
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+});
+
+</script>
+
 </body>
 </html>
