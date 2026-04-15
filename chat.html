@@ -2,16 +2,86 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="style.css">
+<title>MiniBrawl</title>
+
+<style>
+body{
+    margin:0;
+    font-family:sans-serif;
+    background:#0f1e2e;
+    color:white;
+}
+
+.top{
+    background:#2f8fb3;
+    padding:15px;
+    text-align:center;
+    font-size:20px;
+}
+
+.menu{
+    display:flex;
+    justify-content:space-around;
+    padding:10px;
+    background:#14283b;
+}
+
+.menu button{
+    padding:10px;
+    border:none;
+    border-radius:10px;
+    background:#2f8fb3;
+    color:white;
+}
+
+#chat{
+    padding:10px;
+}
+
+.msg{
+    background:#2a3f55;
+    margin:5px 0;
+    padding:10px;
+    border-radius:10px;
+}
+
+.input{
+    position:fixed;
+    bottom:0;
+    width:100%;
+    display:flex;
+}
+
+.input input{
+    flex:1;
+    padding:15px;
+    border:none;
+}
+
+.input button{
+    width:80px;
+    border:none;
+    background:#2f8fb3;
+    color:white;
+}
+</style>
 </head>
 
 <body>
 
-<h2 style="padding:10px">💬 Чат</h2>
+<div class="top">MiniBrawl 🔥</div>
 
+<!-- 🔥 МЕНЮ -->
+<div class="menu">
+    <button onclick="location.href='chat.html'">💬 Чат</button>
+    <button onclick="location.href='qqa.html'">🎮 Игры</button>
+    <button onclick="location.href='txt.html'">📝 Посты</button>
+</div>
+
+<!-- ЧАТ -->
 <div id="chat"></div>
 
-<div style="position:fixed; bottom:0; width:100%; display:flex;">
+<div class="input">
     <input id="msg" placeholder="Сообщение">
     <button onclick="send()">➤</button>
 </div>
@@ -25,55 +95,54 @@ onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
 import {
-ref, push, onChildAdded, get
+ref, push, onValue, set, get
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-let nick = "";
+let nickname = "Без имени";
 
-// 🔐 проверка входа
-onAuthStateChanged(auth, async user=>{
-    if(!user){
-        alert("Сначала войди!");
-        location.href="index.html";
-        return;
-    }
-
-    let snap = await get(ref(db,"users/"+user.uid));
-
-    if(snap.exists()){
-        nick = snap.val().nickname;
+// 🔥 получаем ник
+onAuthStateChanged(auth, async (user)=>{
+    if(user){
+        let snap = await get(ref(db,"users/"+user.uid));
+        if(snap.exists()){
+            nickname = snap.val().nickname;
+        }
     } else {
-        nick = "User";
+        location.href="index.html";
     }
 });
 
-// 📤 отправка
+// 🔥 отправка
 window.send = function(){
-    let text = document.getElementById("msg").value;
 
+    let text = document.getElementById("msg").value;
     if(!text) return;
 
     push(ref(db,"chat"),{
-        user:nick,
-        msg:text
+        name: nickname,
+        text: text
     });
 
     document.getElementById("msg").value="";
 };
 
-// 📥 получение сообщений
-onChildAdded(ref(db,"chat"), snap=>{
-    let d = snap.val();
+// 🔥 загрузка чата
+onValue(ref(db,"chat"), (snap)=>{
 
-    let div = document.createElement("div");
-    div.className="post";
+    let chat = document.getElementById("chat");
+    chat.innerHTML="";
 
-    div.innerHTML = `
-    <b>${d.user}</b><br>
-    ${d.msg}
-    `;
+    snap.forEach(data=>{
+        let msg = data.val();
 
-    document.getElementById("chat").appendChild(div);
+        chat.innerHTML += `
+        <div class="msg">
+            <b>${msg.name}</b><br>
+            ${msg.text}
+        </div>
+        `;
+    });
+
 });
 
 </script>
