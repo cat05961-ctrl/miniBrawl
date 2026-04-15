@@ -2,112 +2,156 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Чат</title>
+<link rel="stylesheet" href="style.css">
 
 <style>
-body {
-    margin:0;
-    background:#0f1e2e;
-    color:white;
-    font-family:Arial;
-}
-
-#chat {
-    height:85vh;
-    overflow:auto;
-    padding:10px;
-}
-
-.msg {
-    background:#2a3b4c;
-    padding:10px;
+.comment {
+    background:#1b2c3d;
+    padding:5px;
     margin:5px;
-    border-radius:10px;
-}
-
-.chatBox {
-    display:flex;
-    position:fixed;
-    bottom:0;
-    width:100%;
-}
-
-.chatBox input {
-    flex:1;
-    padding:12px;
-}
-
-.chatBox button {
-    padding:12px;
-    background:#3aa0c9;
-    border:none;
-    color:white;
+    border-radius:8px;
 }
 </style>
+
 </head>
 
 <body>
 
-<div id="chat"></div>
+<h2>MiniBrawl 🚀</h2>
 
-<div class="chatBox">
-<input id="msg" placeholder="Сообщение">
-<button onclick="sendMsg()">➤</button>
-</div>
+<input id="title" placeholder="Название игры">
+<textarea id="desc" placeholder="Описание"></textarea>
+<input type="file" id="file">
+
+<button onclick="add()">Выложить</button>
+
+<hr>
+
+<div id="posts"></div>
 
 <script type="module">
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-import { getDatabase, ref, push, onChildAdded, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { auth, db, storage } from "./firebase.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDY_GF8Adf1WyTyX91dVSGXRisxvxDyEWc",
-  authDomain: "minibrawl-478a3.firebaseapp.com",
-  databaseURL: "https://minibrawl-478a3-default-rtdb.firebaseio.com",
-  projectId: "minibrawl-478a3"
-};
+import {
+onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getDatabase(app);
+import {
+ref, push, onChildAdded, get, remove, update, increment
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-// проверка входа
-onAuthStateChanged(auth, user => {
-    if (!user) location.href = "index.html";
+import {
+ref as sRef, uploadBytes, getDownloadURL
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-storage.js";
+
+let nick="", uid="";
+
+onAuthStateChanged(auth, async user=>{
+    if(!user) return location.href="index.html";
+
+    uid = user.uid;
+
+    let snap = await get(ref(db,"users/"+uid));
+    nick = snap.val().nickname;
 });
 
-// отправка
-window.sendMsg = async function () {
-    let text = document.getElementById("msg").value;
-    let user = auth.currentUser;
+// ➕ пост
+window.add = async function(){
+    let file = document.getElementById("file").files[0];
+    let url="";
 
-    if (!text) return;
+    if(file){
+        let r = sRef(storage,"games/"+file.name);
+        await uploadBytes(r,file);
+        url = await getDownloadURL(r);
+    }
 
-    let snap = await get(ref(db, "users/" + user.uid));
-    let nick = snap.val()?.nickname || "Без имени";
-
-    push(ref(db, "chat"), {
-        msg: text,
-        user: nick
+    push(ref(db,"posts"),{
+        title:title.value,
+        desc:desc.value,
+        file:url,
+        user:nick,
+        uid:uid,
+        likes:0,
+        views:0
     });
 
-    document.getElementById("msg").value = "";
+    alert("Готово 🔥");
 };
 
-// получение
-const chat = document.getElementById("chat");
+// 📥 загрузка постов
+const posts = document.getElementById("posts");
 
-onChildAdded(ref(db, "chat"), snap => {
-    let data = snap.val();
+onChildAdded(ref(db,"posts"), snap=>{
+    let p = snap.val();
+    let key = snap.key;
+
+    // 👀 увеличиваем просмотры
+    update(ref(db,"posts/"+key),{
+        views: (p.views || 0) + 1
+    });
 
     let div = document.createElement("div");
-    div.className = "msg";
-    div.innerHTML = `<b>${data.user}</b><br>${data.msg}`;
+    div.className="post";
 
-    chat.appendChild(div);
-    chat.scrollTop = chat.scrollHeight;
+    div.innerHTML = `
+    <b>${p.title}</b><br>
+    <small>${p.user}</small><br><br>
+    ${p.desc}<br><br>
+
+    👀 ${p.views || 0} | ❤️ ${p.likes || 0}<br><br>
+
+    ${p.file ? `<a href="${p.file}">📥 Скачать</a><br>`:""}
+
+    <button onclick="like('${key}')">❤️ Лайк</button>
+
+    ${p.uid===uid ? `<button onclick="del('${key}')">🗑 Удалить</button>`:""}
+
+    <hr>
+
+    <input id="c_${key}" placeholder="Комментарий">
+    <button onclick="comment('${key}')">💬</button>
+
+    <div id="comments_${key}"></div>
+    `;
+
+    posts.appendChild(div);
+
+    // 📥 комментарии
+    onChildAdded(ref(db,"comments/"+key), s=>{
+        let c = s.val();
+
+        let cd = document.createElement("div");
+        cd.className="comment";
+        cd.innerText = c.user+": "+c.text;
+
+        document.getElementById("comments_"+key).appendChild(cd);
+    });
 });
+
+// ❤️ лайк
+window.like = function(key){
+    update(ref(db,"posts/"+key),{
+        likes: increment(1)
+    });
+};
+
+// 💬 коммент
+window.comment = function(key){
+    let text = document.getElementById("c_"+key).value;
+
+    push(ref(db,"comments/"+key),{
+        user:nick,
+        text:text
+    });
+};
+
+// 🗑 удалить
+window.del = function(key){
+    remove(ref(db,"posts/"+key));
+    alert("Удалено");
+};
 
 </script>
 
