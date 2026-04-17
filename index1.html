@@ -14,18 +14,13 @@ body{
   text-align:center;
 }
 
-h1{margin-top:20px}
-
 button{
   border:none;
   padding:15px;
   margin:10px;
   border-radius:12px;
-  font-size:18px;
+  font-size:16px;
 }
-
-#upgradeBtn{background:#4ecdc4}
-#backBtn{background:#ff6b6b}
 </style>
 </head>
 
@@ -35,36 +30,62 @@ button{
 
 <p id="info"></p>
 
-<button id="upgradeBtn" onclick="upgrade()">⬆️ Улучшить уровень</button>
+<button onclick="upgrade()">⬆️ Уровень</button>
+<button onclick="damage()">💥 Урон</button>
+<button onclick="heal()">❤️ ХП</button>
+
 <br>
-<button id="backBtn" onclick="back()">⬅ Назад</button>
+<button onclick="back()">⬅ Назад</button>
 
 <script>
-let coins = localStorage.getItem("coins") ? parseInt(localStorage.getItem("coins")) : 0;
-let level = localStorage.getItem("level") ? parseInt(localStorage.getItem("level")) : 1;
+let coins = +localStorage.getItem("coins") || 0;
+let level = +localStorage.getItem("level") || 1;
+let dmg = +localStorage.getItem("dmg") || 5;
+let hp = +localStorage.getItem("hp") || 100;
 
-function getPrice(){
-  return 10 * level; // цена растет 🔥
-}
+// цены растут 🔥
+function priceLvl(){ return 20 * level }
+function priceDmg(){ return 15 * dmg }
+function priceHp(){ return 10 * (hp/10) }
 
 function update(){
   document.getElementById("info").innerText =
-    "💰 " + coins + " | lvl " + level + " | цена: " + getPrice();
+    `💰 ${coins} | lvl ${level} | dmg ${dmg} | hp ${hp}
+⬆️ ${priceLvl()} | 💥 ${priceDmg()} | ❤️ ${priceHp()}`;
 }
 
 function upgrade(){
-  let price = getPrice();
+  let p = priceLvl();
+  if(coins >= p){
+    coins -= p;
+    level++;
+  }else alert("Мало монет");
+  save();
+}
 
-  if(coins >= price){
-    coins -= price;
-    level += 1;
-  }else{
-    alert("Не хватает монет");
-  }
+function damage(){
+  let p = priceDmg();
+  if(coins >= p){
+    coins -= p;
+    dmg += 2;
+  }else alert("Мало монет");
+  save();
+}
 
+function heal(){
+  let p = priceHp();
+  if(coins >= p){
+    coins -= p;
+    hp += 20;
+  }else alert("Мало монет");
+  save();
+}
+
+function save(){
   localStorage.setItem("coins", coins);
   localStorage.setItem("level", level);
-
+  localStorage.setItem("dmg", dmg);
+  localStorage.setItem("hp", hp);
   update();
 }
 

@@ -14,8 +14,6 @@ body{
   text-align:center;
 }
 
-h1{margin-top:20px}
-
 .enemy{
   width:80px;
   height:80px;
@@ -27,14 +25,16 @@ h1{margin-top:20px}
 button{
   border:none;
   padding:15px;
-  margin:10px;
+  margin:8px;
   border-radius:12px;
-  font-size:18px;
+  font-size:16px;
 }
 
-#clickBtn{background:#ff6b6b}
-#attackBtn{background:#f7b731}
-#shopBtn{background:#4ecdc4}
+input{
+  padding:10px;
+  border-radius:10px;
+  border:none;
+}
 </style>
 </head>
 
@@ -42,26 +42,36 @@ button{
 
 <h1>🎮 Mini Brawl</h1>
 
-<p id="stats">HP: 100 | 💰 0 | lvl 1</p>
+<p id="stats"></p>
 
 <div class="enemy" onclick="hitEnemy()"></div>
 
-<button id="clickBtn" onclick="earn()">💰 Клик</button>
-<button id="attackBtn" onclick="hitEnemy()">🔫 Атака</button>
+<button onclick="earn()">💰 Клик</button>
+<button onclick="hitEnemy()">🔫 Атака</button>
 <br>
-<button id="shopBtn" onclick="goShop()">🛒 Магазин</button>
+<button onclick="goShop()">🛒 Магазин</button>
+
+<br><br>
+
+<!-- ПРОМОКОД -->
+<input id="promo" placeholder="Введи промокод">
+<button onclick="usePromo()">🎁 OK</button>
 
 <script>
-let coins = localStorage.getItem("coins") ? parseInt(localStorage.getItem("coins")) : 0;
-let level = localStorage.getItem("level") ? parseInt(localStorage.getItem("level")) : 1;
-let hp = 100;
+let coins = +localStorage.getItem("coins") || 0;
+let level = +localStorage.getItem("level") || 1;
+let dmg = +localStorage.getItem("dmg") || 5;
+let maxHp = +localStorage.getItem("hp") || 100;
+let hp = maxHp;
 
 function update(){
   document.getElementById("stats").innerText =
-    "HP: " + hp + " | 💰 " + coins + " | lvl " + level;
+    `HP: ${hp} | 💰 ${coins} | lvl ${level} | dmg ${dmg}`;
 
   localStorage.setItem("coins", coins);
   localStorage.setItem("level", level);
+  localStorage.setItem("dmg", dmg);
+  localStorage.setItem("hp", maxHp);
 }
 
 function earn(){
@@ -70,12 +80,12 @@ function earn(){
 }
 
 function hitEnemy(){
-  hp -= 5 * level;
+  hp -= dmg;
 
   if(hp <= 0){
     coins += 20 * level;
-    hp = 100;
-    alert("Враг побежден! + монеты");
+    hp = maxHp;
+    alert("Враг убит 💀 + монеты");
   }
 
   update();
@@ -83,6 +93,34 @@ function hitEnemy(){
 
 function goShop(){
   window.location.href = "index1.html";
+}
+
+// 🔥 ПРОМОКОДЫ
+function usePromo(){
+  let code = document.getElementById("promo").value.toLowerCase();
+
+  if(localStorage.getItem("promo_"+code)){
+    alert("Уже использован ❌");
+    return;
+  }
+
+  if(code === "snip"){
+    coins += 100;
+  }
+  else if(code === "kot"){
+    dmg += 5;
+  }
+  else if(code === "tok"){
+    level += 1;
+  }
+  else{
+    alert("Неверный код ❌");
+    return;
+  }
+
+  localStorage.setItem("promo_"+code, true);
+  alert("Промокод активирован 🎉");
+  update();
 }
 
 update();
