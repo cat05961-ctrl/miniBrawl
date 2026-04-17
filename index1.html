@@ -1,162 +1,78 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Игра</title>
+<title>Shop</title>
 
 <style>
-body {
-    margin:0;
-    background:#2c2c54;
-    color:white;
-    font-family:Arial;
-    text-align:center;
+body{
+  margin:0;
+  font-family:sans-serif;
+  background:linear-gradient(135deg,#1e2142,#2c2f5c);
+  color:white;
+  text-align:center;
 }
 
-button {
-    padding:12px;
-    margin:5px;
-    font-size:16px;
-    border:none;
-    border-radius:10px;
-    background:#34ace0;
-    color:white;
+h1{margin-top:20px}
+
+button{
+  border:none;
+  padding:15px;
+  margin:10px;
+  border-radius:12px;
+  font-size:18px;
 }
 
-.player, .enemy {
-    width:40px;
-    height:40px;
-    border-radius:50%;
-    position:absolute;
-}
-
-.player { background:blue; }
-.enemy { background:red; }
-
-#ui {
-    position:fixed;
-    bottom:10px;
-    width:100%;
-}
-
-#shopBox {
-    display:none;
-}
+#upgradeBtn{background:#4ecdc4}
+#backBtn{background:#ff6b6b}
 </style>
 </head>
 
 <body>
 
-<h3>🎮 Mini Brawl</h3>
-
-<div id="game">
-<div id="player" class="player"></div>
-<div id="enemy" class="enemy"></div>
+<h1>🛒 Магазин</h1>
 
 <p id="info"></p>
 
-<div id="ui">
-<button onclick="shoot()">🔫</button>
-<button onclick="openShop()">🛒</button>
-<button onclick="back()">⬅</button>
-</div>
-</div>
-
-<div id="shopBox">
-<h2>🛒 Магазин</h2>
-<p id="coinsText"></p>
-<p id="levelText"></p>
-
-<button onclick="upgrade()">Апгрейд уровня</button>
-<button onclick="closeShop()">Назад</button>
-</div>
+<button id="upgradeBtn" onclick="upgrade()">⬆️ Улучшить уровень</button>
+<br>
+<button id="backBtn" onclick="back()">⬅ Назад</button>
 
 <script>
-let player = {x:150,y:200,hp:100}
-let enemy = {x:100,y:100,hp:100}
+let coins = localStorage.getItem("coins") ? parseInt(localStorage.getItem("coins")) : 0;
+let level = localStorage.getItem("level") ? parseInt(localStorage.getItem("level")) : 1;
 
-let coins = parseInt(localStorage.getItem("coins")) || 0
-let level = parseInt(localStorage.getItem("level")) || 1
-
-function save(){
-    localStorage.setItem("coins", coins)
-    localStorage.setItem("level", level)
-}
-
-function draw(){
-    document.getElementById("player").style.left = player.x+"px"
-    document.getElementById("player").style.top = player.y+"px"
-
-    document.getElementById("enemy").style.left = enemy.x+"px"
-    document.getElementById("enemy").style.top = enemy.y+"px"
-
-    document.getElementById("info").innerText =
-        "HP: "+Math.max(0,Math.floor(player.hp))+
-        " | 💰 "+coins+
-        " | lvl "+level
+function getPrice(){
+  return 10 * level; // цена растет 🔥
 }
 
 function update(){
-    let dx = player.x - enemy.x
-    let dy = player.y - enemy.y
-    let dist = Math.sqrt(dx*dx+dy*dy)
-
-    if(dist>0){
-        enemy.x += dx/dist * 1
-        enemy.y += dy/dist * 1
-    }
-
-    if(dist < 50){
-        player.hp -= 0.3
-    }
-
-    draw()
-}
-
-function shoot(){
-    enemy.hp -= 10 + level*2
-
-    if(enemy.hp <= 0){
-        coins += 20
-        enemy.x = Math.random()*300
-        enemy.y = Math.random()*300
-        enemy.hp = 100
-        save()
-    }
+  document.getElementById("info").innerText =
+    "💰 " + coins + " | lvl " + level + " | цена: " + getPrice();
 }
 
 function upgrade(){
-    let cost = level * 50
+  let price = getPrice();
 
-    if(coins >= cost){
-        coins -= cost
-        level++
-        save()
-        alert("Уровень улучшен!")
-    } else {
-        alert("Не хватает монет!")
-    }
-}
+  if(coins >= price){
+    coins -= price;
+    level += 1;
+  }else{
+    alert("Не хватает монет");
+  }
 
-function openShop(){
-    document.getElementById("game").style.display="none"
-    document.getElementById("shopBox").style.display="block"
+  localStorage.setItem("coins", coins);
+  localStorage.setItem("level", level);
 
-    document.getElementById("coinsText").innerText = "Монеты: "+coins
-    document.getElementById("levelText").innerText = "Уровень: "+level+" | Цена: "+(level*50)
-}
-
-function closeShop(){
-    document.getElementById("shopBox").style.display="none"
-    document.getElementById("game").style.display="block"
+  update();
 }
 
 function back(){
-    window.location.href="index.html"
+  window.location.href = "index.html";
 }
 
-setInterval(update, 30)
+update();
 </script>
 
 </body>
