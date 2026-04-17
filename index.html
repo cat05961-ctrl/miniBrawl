@@ -1,57 +1,48 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Brawl</title>
+
+<style>
+body {
+    margin:0;
+    font-family:Arial;
+    background:#1e1e2f;
+    color:white;
+    text-align:center;
+}
+
+h1 {margin-top:40px;}
+
+button {
+    width:80%;
+    padding:15px;
+    margin:10px;
+    font-size:18px;
+    border:none;
+    border-radius:12px;
+    background:#ff4757;
+    color:white;
+}
+</style>
 </head>
 
 <body>
 
-<h2>MiniBrawl 🔥</h2>
+<h1>🔥 Mini Brawl</h1>
 
-<div class="box">
-<input id="nick" placeholder="Ник">
-<input id="email" placeholder="Email">
-<input id="pass" type="password" placeholder="Пароль">
+<button onclick="play()">Играть 🎮</button>
+<button onclick="shop()">Магазин 🛒</button>
 
-<button onclick="reg()">Регистрация</button>
-<button onclick="login()">Вход</button>
-</div>
-
-<script type="module">
-
-import { auth, db } from "./firebase.js";
-
-import {
-createUserWithEmailAndPassword,
-signInWithEmailAndPassword
-} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
-
-import { ref, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
-
-window.reg = function(){
-let nick = nickEl.value;
-let email = emailEl.value;
-let pass = passEl.value;
-
-createUserWithEmailAndPassword(auth,email,pass)
-.then(user=>{
-set(ref(db,"users/"+user.user.uid),{
-nickname:nick
-});
-location.href="chat.html";
-});
-};
-
-window.login = function(){
-signInWithEmailAndPassword(auth,emailEl.value,passEl.value)
-.then(()=>location.href="chat.html");
-};
-
-const nickEl = document.getElementById("nick");
-const emailEl = document.getElementById("email");
-const passEl = document.getElementById("pass");
-
+<script>
+function play(){
+    window.location.href = "index1.html"
+}
+function shop(){
+    window.location.href = "index1.html#shop"
+}
 </script>
 
 </body>
