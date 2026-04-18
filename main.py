@@ -1,123 +1,121 @@
 from pywebio import start_server
-from pywebio.input import *
-from pywebio.output import *
+from pywebio.input import input, input_group, actions, PASSWORD
+from pywebio.output import put_text, put_markdown, output, put_scrollable, popup
 from pywebio.session import run_async
-import asyncio, json, os
+import asyncio
+import os
 
-CHAT_FILE = "chat.json"
-SCORE_FILE = "score.json"
+users = {}
+chat_rooms = {"global": []}
+scores = {}
 
-# ===== загрузка =====
-def load(file):
-    if not os.path.exists(file):
-        return {}
-    with open(file, "r") as f:
-        return json.load(f)
-
-# ===== сохранение =====
-def save(file, data):
-    with open(file, "w") as f:
-        json.dump(data, f)
-
-# ===== чат обновление =====
-async def refresh(msg_box, room):
-    last = ""
+async def refresh(box, room):
+    last = 0
     while True:
-        data = load(CHAT_FILE)
-        msgs = data.get("rooms", {}).get(room, [])
-        text = "\n".join(msgs)
-
-        if text != last:
-            msg_box.clear()
-            msg_box.append(put_text(text))
-            last = text
-
+        msgs = chat_rooms.get(room, [])
+        if len(msgs) != last:
+            box.clear()
+            for m in msgs[-50:]:
+                box.append(put_text(m))
+            last = len(msgs)
         await asyncio.sleep(1)
 
-# ===== выбор комнаты =====
 async def choose_room():
     while True:
-        data = load(CHAT_FILE)
-        rooms = list(data.get("rooms", {}).keys())
+        rooms = list(chat_rooms.keys())
+        choice = await input_group("Чаты", [
+            actions(name="cmd", buttons=rooms + ["Создать"])
+        ])
 
-        choice = await select("Выбери чат", rooms + ["➕ Создать"])
+        cmd = choice["cmd"]
 
-        if choice == "➕ Создать":
-            name = await input("Название чата")
-            if name:
-                data["rooms"][name] = []
-                save(CHAT_FILE, data)
+        if cmd == "Создать":
+            name = await input("Название")
+            if name and name not in chat_rooms:
+                chat_rooms[name] = []
         else:
-            return choice
+            return cmd
 
-# ===== чат =====
 async def chat(user):
     room = await choose_room()
 
-    clear()
-    put_markdown(f"## 💬 Чат: {room}")
+    put_markdown(f"## Чат: {room}")
+    box = output()
+    put_scrollable(box, height=300)
 
-    msg_box = output()
-    put_scrollable(msg_box, height=300)
+    run_async(refresh(box, room))
 
-    run_async(refresh(msg_box, room))
+    chat_rooms[room].append(f"{user} вошёл")
 
     while True:
-        data = await input_group("Сообщение", [
+        data = await input_group("", [
             input(name="msg"),
-            actions(name="cmd", buttons=["📨", "🔙"])
+            actions(name="cmd", buttons=["Отправить", "Назад"])
         ])
 
-        if data["cmd"] == "🔙":
+        if data["cmd"] == "Назад":
+            chat_rooms[room].append(f"{user} вышел")
             break
 
         if data["msg"]:
-            chat = load(CHAT_FILE)
-            chat["rooms"][room].append(f"{user}: {data['msg']}")
-            save(CHAT_FILE, chat)
+            chat_rooms[room].append(f"{user}: {data['msg']}")
 
-# ===== игра =====
 async def game(user):
-    scores = load(SCORE_FILE)
     scores.setdefault(user, 0)
 
     while True:
-        clear()
-        put_markdown(f"## 🎮 Игра\n👤 {user}\n💰 {scores[user]}")
+        put_markdown(f"## Игрок: {user} | Очки: {scores[user]}")
 
         data = await input_group("Меню", [
             actions(name="cmd", buttons=[
-                "💥 Клик",
-                "💬 Чат",
-                "🏆 Топ",
-                "🚪 Выход"
+                "Клик",
+                "Чат",
+                "Топ",
+                "Выход"
             ])
         ])
 
-        if data["cmd"] == "💥 Клик":
+        if data["cmd"] == "Клик":
             scores[user] += 1
 
-        elif data["cmd"] == "💬 Чат":
+        elif data["cmd"] == "Чат":
             await chat(user)
 
-        elif data["cmd"] == "🏆 Топ":
+        elif data["cmd"] == "Топ":
             top = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-            text = "\n".join([f"{u}: {s}" for u, s in top[:5]])
-            popup("🏆 Топ", text)
+            text = "\n".join(f"{u}: {s}" for u, s in top[:5])
+            popup("Топ", text)
 
-        elif data["cmd"] == "🚪 Выход":
+        elif data["cmd"] == "Выход":
             break
 
-        save(SCORE_FILE, scores)
+async def login():
+    while True:
+        data = await input_group("Аккаунт", [
+            input("Ник", name="user"),
+            input("Пароль", type=PASSWORD, name="pass"),
+            actions(name="cmd", buttons=["Войти", "Регистрация"])
+        ])
 
-# ===== вход =====
+        user = data["user"]
+        pas = data["pass"]
+
+        if data["cmd"] == "Регистрация":
+            if user not in users:
+                users[user] = pas
+            else:
+                put_text("Уже есть")
+
+        elif data["cmd"] == "Войти":
+            if user in users and users[user] == pas:
+                return user
+            else:
+                put_text("Ошибка")
+
 async def main():
-    put_markdown("## 🔐 Вход")
-    user = await input("Ник")
-
+    user = await login()
     await game(user)
 
-# ===== запуск =====
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     start_server(main, host="0.0.0.0", port=port)
