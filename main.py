@@ -1,59 +1,75 @@
 from pywebio import start_server
-from pywebio.input import input, input_group, actions
+from pywebio.input import *
 from pywebio.output import *
 from pywebio.session import run_async
 import asyncio
 
+users = {}  # ник: пароль
 chat_msgs = []
-online_users = set()
+
+async def refresh(msg_box):
+    while True:
+        msg_box.clear()
+        for m in chat_msgs:
+            msg_box.append(put_text(m))
+        await asyncio.sleep(1)
 
 async def main():
-    global chat_msgs
+    put_markdown("## 🔐 Вход / Регистрация")
 
-    put_markdown("## 📱 Mini Brawl Chat")
+    data = await input_group("Аккаунт", [
+        input("Ник", name="user"),
+        input("Пароль", type=PASSWORD, name="pass"),
+        actions(name="act", buttons=[
+            {"label": "Войти", "value": "login"},
+            {"label": "Регистрация", "value": "register"}
+        ])
+    ])
+
+    user = data["user"]
+    password = data["pass"]
+
+    # РЕГИСТРАЦИЯ
+    if data["act"] == "register":
+        if user in users:
+            put_error("❌ Такой ник уже есть")
+            return
+        users[user] = password
+        put_success("✅ Аккаунт создан!")
 
     # ВХОД
-    nickname = await input("Введите ник:")
-    password = await input("Введите пароль:", type="password")
+    elif data["act"] == "login":
+        if user not in users or users[user] != password:
+            put_error("❌ Неверный логин или пароль")
+            return
 
-    # простая проверка
-    if password != "1234":
-        put_error("❌ Неверный пароль")
-        return
-
-    online_users.add(nickname)
-
-    put_success(f"✅ Ты вошёл как {nickname}")
+    chat_msgs.append(f"🟢 {user} зашёл")
 
     msg_box = output()
     put_scrollable(msg_box, height=300)
 
-    chat_msgs.append(("📢", f"{nickname} зашел в чат"))
+    run_async(refresh(msg_box))
 
-    async def refresh():
-        while True:
-            msg_box.clear()
-            for m in chat_msgs:
-                msg_box.append(put_text(f"{m[0]} {m[1]}"))
-            await asyncio.sleep(1)
+    score = 0
 
-    run_async(refresh())
-
-    # ЧАТ
     while True:
-        data = await input_group("💬 Сообщение", [
-            input(name="msg", placeholder="Текст..."),
-            actions(name="cmd", buttons=["Отправить", "Выйти"])
+        data = await input_group("Чат / Игра", [
+            input("Сообщение", name="msg"),
+            actions(name="cmd", buttons=[
+                {"label": "📨 Отправить", "value": "send"},
+                {"label": "🎮 Клик", "value": "click"}
+            ])
         ])
 
-        if data is None or data["cmd"] == "Выйти":
-            break
+        if data["cmd"] == "send":
+            chat_msgs.append(f"{user}: {data['msg']}")
 
-        chat_msgs.append((nickname, data["msg"]))
+        elif data["cmd"] == "click":
+            score += 1
+            chat_msgs.append(f"🎮 {user}: {score}")
 
-    online_users.remove(nickname)
-    put_warning("Ты вышел")
-
-# ОБЯЗАТЕЛЬНО!
+# Render запуск
 if __name__ == "__main__":
-    start_server(main, port=8080, debug=True)
+    import os
+    port = int(os.environ.get("PORT", 8080))
+    start_server(main, host="0.0.0.0", port=port)
