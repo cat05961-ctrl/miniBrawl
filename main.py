@@ -1,135 +1,68 @@
+import asyncio
+
 from pywebio import start_server
-from pywebio.input import input, input_group, actions, PASSWORD
+from pywebio.input import *
 from pywebio.output import *
-from pywebio.session import run_async
-import asyncio, os
+from pywebio.session import defer_call, info as session_info, run_async, run_js
 
-users = {}
-chat_rooms = {"global": []}
-scores = {}
+chat_msgs = []
+online_users = set()
 
-# ===== ОБНОВЛЕНИЕ =====
-async def refresh(box, room):
-    last = 0
-    while True:
-        msgs = chat_rooms.get(room, [])
-        if len(msgs) != last:
-            box.clear()
-            for m in msgs[-50:]:
-                box.append(put_text(m))
-            last = len(msgs)
-        await asyncio.sleep(1)
+MAX_MESSAGES_COUNT = 100
 
-# ===== ЧАТ =====
-async def chat(user):
-    clear()
-
-    room = "global"  # пока один чат (чтобы не ломалось)
-
-    put_markdown("## 💬 Чат")
-    box = output()
-    put_scrollable(box, height=300)
-
-    run_async(refresh(box, room))
-
-    chat_rooms[room].append(f"🟢 {user} вошёл")
-
-    while True:
-        data = await input_group("", [
-            input(name="msg", placeholder="Сообщение..."),
-            actions(name="cmd", buttons=["Отправить", "Назад"])
-        ])
-
-        if not data:
-            continue
-
-        if data["cmd"] == "Назад":
-            chat_rooms[room].append(f"🔴 {user} вышел")
-            break
-
-        msg = data.get("msg")
-
-        if msg:
-            chat_rooms[room].append(f"{user}: {msg}")
-
-# ===== ИГРА =====
-async def game(user):
-    scores.setdefault(user, 0)
-
-    while True:
-        clear()
-
-        put_markdown(f"""
-## 🎮 Игра
-
-👤 {user}  
-💰 Очки: {scores[user]}
-""")
-
-        data = await input_group("Меню", [
-            actions(name="cmd", buttons=[
-                "Клик",
-                "Чат",
-                "Топ",
-                "Выход"
-            ])
-        ])
-
-        if not data:
-            continue
-
-        if data["cmd"] == "Клик":
-            scores[user] += 1
-
-        elif data["cmd"] == "Чат":
-            await chat(user)
-
-        elif data["cmd"] == "Топ":
-            top = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-            popup("🏆 Топ", "\n".join(f"{u}: {s}" for u, s in top[:5]))
-
-        elif data["cmd"] == "Выход":
-            break
-
-# ===== ВХОД =====
-async def login():
-    while True:
-        clear()
-
-        data = await input_group("🔐 Аккаунт", [
-            input("Ник", name="user"),
-            input("Пароль", type=PASSWORD, name="pass"),
-            actions(name="cmd", buttons=["Войти", "Регистрация"])
-        ])
-
-        if not data:
-            continue
-
-        user = data["user"]
-        pas = data["pass"]
-
-        if data["cmd"] == "Регистрация":
-            if not user or not pas:
-                toast("❌ Пусто")
-                continue
-
-            if user in users:
-                toast("❌ Уже есть")
-            else:
-                users[user] = pas
-                toast("✅ Аккаунт создан")
-
-        elif data["cmd"] == "Войти":
-            if user in users and users[user] == pas:
-                return user
-            else:
-                toast("❌ Неверно")
-
-# ===== MAIN =====
 async def main():
-    user = await login()
-    await game(user)
+    global chat_msgs
+    
+    put_markdown("## 🧊 Добро пожаловать в онлайн чат!\nИсходный код данного чата укладывается в 100 строк кода!")
+
+    msg_box = output()
+    put_scrollable(msg_box, height=300, keep_bottom=True)
+
+    nickname = await input("Войти в чат", required=True, placeholder="Ваше имя", validate=lambda n: "Такой ник уже используется!" if n in online_users or n == '📢' else None)
+    online_users.add(nickname)
+
+    chat_msgs.append(('📢', f'`{nickname}` присоединился к чату!'))
+    msg_box.append(put_markdown(f'📢 `{nickname}` присоединился к чату'))
+
+    refresh_task = run_async(refresh_msg(nickname, msg_box))
+
+    while True:
+        data = await input_group("💭 Новое сообщение", [
+            input(placeholder="Текст сообщения ...", name="msg"),
+            actions(name="cmd", buttons=["Отправить", {'label': "Выйти из чата", 'type': 'cancel'}])
+        ], validate = lambda m: ('msg', "Введите текст сообщения!") if m["cmd"] == "Отправить" and not m['msg'] else None)
+
+        if data is None:
+            break
+
+        msg_box.append(put_markdown(f"`{nickname}`: {data['msg']}"))
+        chat_msgs.append((nickname, data['msg']))
+
+    refresh_task.close()
+
+    online_users.remove(nickname)
+    toast("Вы вышли из чата!")
+    msg_box.append(put_markdown(f'📢 Пользователь `{nickname}` покинул чат!'))
+    chat_msgs.append(('📢', f'Пользователь `{nickname}` покинул чат!'))
+
+    put_buttons(['Перезайти'], onclick=lambda btn:run_js('window.location.reload()'))
+
+async def refresh_msg(nickname, msg_box):
+    global chat_msgs
+    last_idx = len(chat_msgs)
+
+    while True:
+        await asyncio.sleep(1)
+        
+        for m in chat_msgs[last_idx:]:
+            if m[0] != nickname: # if not a message from current user
+                msg_box.append(put_markdown(f"`{m[0]}`: {m[1]}"))
+        
+        # remove expired
+        if len(chat_msgs) > MAX_MESSAGES_COUNT:
+            chat_msgs = chat_msgs[len(chat_msgs) // 2:]
+        
+        last_idx = len(chat_msgs)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    start_server(main, host="0.0.0.0", port=port)
+    start_server(main, debug=True, port=8080, cdn=False)
