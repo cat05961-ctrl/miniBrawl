@@ -1,0 +1,45 @@
+{
+  "entities": {
+    "Instance": {
+      "title": "Cloud Instance",
+      "description": "Represents a virtual server instance managed by CloudEngine.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "status": { "type": "string", "enum": ["provisioning", "running", "stopping", "stopped", "error"] },
+        "ip": { "type": "string" },
+        "cpu": { "type": "number", "description": "Number of vCPUs" },
+        "ram": { "type": "number", "description": "RAM in GB" },
+        "storage": { "type": "number", "description": "Storage in GB" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["name", "status", "cpu", "ram", "storage", "ownerId"]
+    },
+    "Log": {
+      "title": "Server Log",
+      "description": "Activity log for a specific server instance.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "instanceId": { "type": "string" },
+        "message": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "level": { "type": "string", "enum": ["info", "warn", "error"] }
+      },
+      "required": ["instanceId", "message", "timestamp", "level"]
+    }
+  },
+  "firestore": {
+    "/instances/{instanceId}": {
+      "schema": "Instance",
+      "description": "Central collection for virtual server instances."
+    },
+    "/instances/{instanceId}/logs/{logId}": {
+      "schema": "Log",
+      "description": "Subcollection for server logs."
+    }
+  }
+}

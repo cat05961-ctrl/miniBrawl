@@ -1,0 +1,6 @@
+{
+  "name": "QuantumMC",
+  "description": "High-performance Minecraft server hosting with instant provisioning, real-time terminal access, and dedicated DDoS protection.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

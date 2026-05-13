@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- HELPERS ---
+    function isSignedIn() { return request.auth != null; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    
+    function isOwner(data) {
+      return isSignedIn() && data.get('ownerId', null) == request.auth.uid;
+    }
+
+    // --- INSTANCES ---
+    match /instances/{instanceId} {
+      // LIST: Forces client to include status/ownerId filter if needed, 
+      // but here we just check if the document belongs to user
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow get: if isOwner(resource.data);
+      
+      allow create: if isSignedIn() 
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time;
+        
+      allow update: if isOwner(existing()) 
+        && incoming().ownerId == existing().ownerId
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'ip', 'updatedAt', 'plugins', 'name', 'port', 'version', 'type'])
+        );
+        
+      allow delete: if isOwner(existing());
+
+      // --- LOGS SUBCOLLECTION ---
+      match /logs/{logId} {
+        // Relational sync: Access derived from parent document ownership
+        allow read: if isSignedIn() && get(/databases/$(database)/documents/instances/$(instanceId)).data.ownerId == request.auth.uid;
+        allow create: if isSignedIn() && 
+          get(/databases/$(database)/documents/instances/$(instanceId)).data.ownerId == request.auth.uid &&
+          incoming().timestamp == request.time;
+      }
+    }
+  }
+}

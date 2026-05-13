@@ -1,50 +1,13 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Snil AI</title>
-</head>
-<body style="background:#111;color:white;text-align:center;">
-
-<h2>Snil AI</h2>
-
-<textarea id="text" placeholder="Напиши..." style="width:90%;height:100px;"></textarea><br>
-<button onclick="send()">Отправить</button>
-
-<p id="res"></p>
-
-<script>
-const API_KEY = "sk-E8ylUxQIEvXEQt1lbDgOrVXkqts8TQjwviFeVObGt5pP5MYBO1r4vDDP2jY6";
-
-async function send() {
-    const text = document.getElementById("text").value;
-    const resEl = document.getElementById("res");
-
-    resEl.innerText = "Загрузка...";
-
-    try {
-        const response = await fetch("https://api.gen-api.ru/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + API_KEY
-            },
-            body: JSON.stringify({
-                model: "seedance-2.0",
-                messages: [
-                    { role: "user", content: text }
-                ]
-            })
-        });
-
-        const data = await response.json();
-        resEl.innerText = data.choices[0].message.content;
-
-    } catch (e) {
-        resEl.innerText = "Ошибка: " + e;
-    }
-}
-</script>
-
-</body>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Google AI Studio App</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
+
