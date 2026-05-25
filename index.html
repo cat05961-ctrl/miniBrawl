@@ -1,13 +1,222 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Bot Control</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background: #0a0f1a;
+            color: #0f0;
+            font-family: monospace;
+            padding: 12px;
+            margin: 0;
+        }
+        .container { max-width: 700px; margin: 0 auto; }
+        .card {
+            background: #11161f;
+            border: 1px solid #0f0;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        h2, h3 { margin-top: 0; text-align: center; }
+        .flex {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        input, button {
+            background: #1e2a2e;
+            border: 1px solid #0f0;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+            flex: 1;
+            min-width: 120px;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button.stop {
+            background: #a00;
+            border-color: #f00;
+            color: #fff;
+        }
+        .log {
+            background: #000;
+            height: 200px;
+            overflow-y: auto;
+            font-size: 12px;
+            padding: 8px;
+            border-radius: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th, td {
+            border: 1px solid #0f0;
+            padding: 6px;
+            text-align: left;
+        }
+        th { background: #1e2a2e; }
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        .online { background: #0f0; }
+        .offline { background: #f00; }
+        .registered { background: #ff0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <h2>🤖 УПРАВЛЕНИЕ БОТАМИ</h2>
+        <div class="flex">
+            <input type="text" id="host" placeholder="IP сервера" value="Lemoniktime.kitpvp.su">
+            <input type="number" id="port" placeholder="Порт" value="25565">
+        </div>
+        <div class="flex">
+            <input type="text" id="prefix" placeholder="Префикс имени" value="ZmrDrom">
+            <input type="number" id="count" placeholder="Кол-во ботов" value="50">
+        </div>
+        <div class="flex">
+            <input type="text" id="regPass" placeholder="/register пароль" value="">
+            <input type="text" id="loginPass" placeholder="/login пароль" value="">
+        </div>
+        <div class="flex">
+            <input type="text" id="spamCmd" placeholder="Команда спама" value="!краш">
+            <input type="number" id="spamDelay" placeholder="Задержка (мс)" value="70">
+        </div>
+        <div class="flex">
+            <label><input type="checkbox" id="autoRejoin" checked> Автоперезаход</label>
+        </div>
+        <div class="flex">
+            <button id="startBtn" style="background:#0f0;">▶ ЗАПУСТИТЬ</button>
+            <button id="stopBtn" class="stop">⏹ ОСТАНОВИТЬ</button>
+        </div>
+        <div class="flex">
+            <input type="text" id="globalCmd" placeholder="Команда для всех ботов (например, say привет)" style="flex:3">
+            <button id="sendCmdBtn">➡️ ОТПРАВИТЬ</button>
+        </div>
+    </div>
 
+    <div class="card">
+        <h3>📜 ЛОГ</h3>
+        <div class="log" id="logArea"></div>
+    </div>
+
+    <div class="card">
+        <h3>📊 БОТЫ (<span id="onlineCount">0</span> / <span id="totalCount">0</span>)</h3>
+        <div style="overflow-x: auto;">
+            <table id="botsTable">
+                <thead><tr><th>Имя бота</th><th>Статус</th></tr></thead>
+                <tbody id="botsBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    const logDiv = document.getElementById('logArea');
+    const botsBody = document.getElementById('botsBody');
+    const onlineSpan = document.getElementById('onlineCount');
+    const totalSpan = document.getElementById('totalCount');
+
+    let botStatus = {};
+
+    function addLog(msg) {
+        const p = document.createElement('div');
+        p.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        logDiv.appendChild(p);
+        p.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function updateTable() {
+        botsBody.innerHTML = '';
+        let online = 0;
+        let total = Object.keys(botStatus).length;
+        for (const [name, status] of Object.entries(botStatus)) {
+            const row = botsBody.insertRow();
+            row.insertCell(0).textContent = name;
+            let statusCell = row.insertCell(1);
+            let dotClass = 'offline';
+            if (status.includes('registered') || status.includes('connected')) {
+                dotClass = 'online';
+                if (status.includes('registered')) dotClass = 'registered';
+                online++;
+            }
+            statusCell.innerHTML = `<span class="status-dot ${dotClass}"></span> ${status}`;
+        }
+        onlineSpan.innerText = online;
+        totalSpan.innerText = total;
+    }
+
+    socket.on('status', (data) => {
+        botStatus[data.name] = data.status;
+        addLog(`${data.name} → ${data.status}`);
+        updateTable();
+    });
+
+    socket.on('allStopped', () => {
+        addLog('⛔ Все боты остановлены');
+        botStatus = {};
+        updateTable();
+    });
+
+    socket.on('rejoin', ({ name, cfg }) => {
+        addLog(`🔄 Перезапуск бота ${name}...`);
+        const single = { ...cfg, count: 1, prefix: name.replace(/\d+$/, '') };
+        socket.emit('start', single);
+    });
+
+    document.getElementById('startBtn').onclick = () => {
+        const config = {
+            host: document.getElementById('host').value,
+            port: parseInt(document.getElementById('port').value),
+            count: parseInt(document.getElementById('count').value),
+            prefix: document.getElementById('prefix').value,
+            regPass: document.getElementById('regPass').value,
+            loginPass: document.getElementById('loginPass').value,
+            spamCmd: document.getElementById('spamCmd').value,
+            spamDelay: parseInt(document.getElementById('spamDelay').value),
+            autoRejoin: document.getElementById('autoRejoin').checked
+        };
+        if (!config.host || config.count < 1) {
+            addLog('❌ Заполните IP сервера и количество ботов');
+            return;
+        }
+        socket.emit('start', config);
+        addLog(`🚀 Запуск ${config.count} ботов на ${config.host}`);
+    };
+
+    document.getElementById('stopBtn').onclick = () => {
+        socket.emit('stop');
+        addLog('⏹ Отправлена команда остановки всех ботов');
+    };
+
+    document.getElementById('sendCmdBtn').onclick = () => {
+        const cmd = document.getElementById('globalCmd').value.trim();
+        if (cmd) {
+            socket.emit('command', cmd);
+            addLog(`📢 Отправлена команда всем: ${cmd}`);
+            document.getElementById('globalCmd').value = '';
+        }
+    };
+</script>
+</body>
+</html>
