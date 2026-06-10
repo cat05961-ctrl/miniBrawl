@@ -1,17 +1,21 @@
+const express = require("express");
 const { Telegraf } = require("telegraf");
 
-const bot = new Telegraf("8810632130:AAHZWZtG8NiEhPf0Ef7mvqJNP5VqGkx3Fkk");
+const app = express();
+app.get("/", (req, res) => res.send("Bot is alive"));
+app.listen(process.env.PORT || 3000);
+
+const bot = new Telegraf(process.env.8810632130:AAHZWZtG8NiEhPf0Ef7mvqJNP5VqGkx3Fkk);
 
 const CHANNEL = "@ReallTimeTG";
 const PROMO = "SOSIVNKOQWOLNFIJ";
 const IP = "ReallTime.kitpvp.su";
 
-bot.start(async (ctx) => {
+bot.start((ctx) => {
     return ctx.reply(
         "🎁 Получите награду!\n\n" +
         "📢 Подпишитесь на канал: " + CHANNEL + "\n\n" +
-        "Нажмите кнопку ниже для проверки.\n\n" +
-        "🖥 IP: " + IP,
+        "🖥 IP сервера: " + IP,
         {
             reply_markup: {
                 inline_keyboard: [
@@ -32,18 +36,17 @@ bot.action("check", async (ctx) => {
         if (["member", "administrator", "creator"].includes(member.status)) {
             return ctx.reply(
                 "✅ Подписка подтверждена!\n\n" +
-                "🎟 Промокод:\n" + PROMO + "\n\n" +
+                "🎟 Промокод: " + PROMO + "\n" +
                 "🖥 IP: " + IP
             );
         } else {
-            return ctx.reply("❌ Вы не подписаны на канал " + CHANNEL);
+            return ctx.reply("❌ Ты не подписан на канал");
         }
     } catch (e) {
-        return ctx.reply(
-            "⚠ Ошибка проверки.\nУбедись что бот добавлен в админы канала."
-        );
+        return ctx.reply("⚠ Ошибка. Добавь бота в админы канала.");
     }
 });
 
 bot.launch();
+
 console.log("Bot started");
