@@ -5,14 +5,21 @@ const app = express();
 app.get("/", (req, res) => res.send("Bot is alive"));
 app.listen(process.env.PORT || 3000);
 
-const bot = new Telegraf(process.env.8810632130:AAHZWZtG8NiEhPf0Ef7mvqJNP5VqGkx3Fkk);
+const TOKEN = process.env.8810632130:AAHZWZtG8NiEhPf0Ef7mvqJNP5VqGkx3Fkk;
+
+if (!TOKEN) {
+    console.log("❌ BOT_TOKEN не найден в переменных Render");
+    process.exit(1);
+}
+
+const bot = new Telegraf(TOKEN);
 
 const CHANNEL = "@ReallTimeTG";
 const PROMO = "SOSIVNKOQWOLNFIJ";
 const IP = "ReallTime.kitpvp.su";
 
 bot.start((ctx) => {
-    return ctx.reply(
+    ctx.reply(
         "🎁 Получите награду!\n\n" +
         "📢 Подпишитесь на канал: " + CHANNEL + "\n\n" +
         "🖥 IP сервера: " + IP,
@@ -43,10 +50,10 @@ bot.action("check", async (ctx) => {
             return ctx.reply("❌ Ты не подписан на канал");
         }
     } catch (e) {
-        return ctx.reply("⚠ Ошибка. Добавь бота в админы канала.");
+        console.log(e);
+        return ctx.reply("⚠ Ошибка проверки (бот должен быть админом канала)");
     }
 });
 
 bot.launch();
-
 console.log("Bot started");
