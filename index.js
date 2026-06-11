@@ -1,59 +1,55 @@
-const express = require("express");
 const { Telegraf } = require("telegraf");
+const axios = require("axios");
+const sqlite3 = require("sqlite3").verbose();
 
-const app = express();
-app.get("/", (req, res) => res.send("Bot is alive"));
-app.listen(process.env.PORT || 3000);
+const PANEL_BOT_TOKEN = "ТВОЙ_ТОКЕН_ПАНЕЛИ";
 
-const TOKEN = process.env.8810632130:AAHZWZtG8NiEhPf0Ef7mvqJNP5VqGkx3Fkk;
+const bot = new Telegraf(PANEL_BOT_TOKEN);
 
-if (!TOKEN) {
-    console.log("❌ BOT_TOKEN не найден в переменных Render");
-    process.exit(1);
-}
+const db = new sqlite3.Database("database.db");
 
-const bot = new Telegraf(TOKEN);
-
-const CHANNEL = "@ReallTimeTG";
-const PROMO = "SOSIVNKOQWOLNFIJ";
-const IP = "ReallTime.kitpvp.su";
+db.run(`
+CREATE TABLE IF NOT EXISTS bots (
+    user_id INTEGER,
+    token TEXT,
+    username TEXT
+)
+`);
 
 bot.start((ctx) => {
     ctx.reply(
-        "🎁 Получите награду!\n\n" +
-        "📢 Подпишитесь на канал: " + CHANNEL + "\n\n" +
-        "🖥 IP сервера: " + IP,
-        {
-            reply_markup: {
-                inline_keyboard: [
-                    [{ text: "✅ Проверить подписку", callback_data: "check" }]
-                ]
-            }
-        }
+        "Отправь токен своего бота.\n\nПример:\n123456:ABCDEF..."
     );
 });
 
-bot.action("check", async (ctx) => {
+bot.on("text", async (ctx) => {
+    const token = ctx.message.text.trim();
+
     try {
-        const member = await ctx.telegram.getChatMember(
-            CHANNEL,
-            ctx.from.id
+        const res = await axios.get(
+            `https://api.telegram.org/bot${token}/getMe`
         );
 
-        if (["member", "administrator", "creator"].includes(member.status)) {
-            return ctx.reply(
-                "✅ Подписка подтверждена!\n\n" +
-                "🎟 Промокод: " + PROMO + "\n" +
-                "🖥 IP: " + IP
-            );
-        } else {
-            return ctx.reply("❌ Ты не подписан на канал");
+        if (!res.data.ok) {
+            return ctx.reply("❌ Неверный токен");
         }
-    } catch (e) {
-        console.log(e);
-        return ctx.reply("⚠ Ошибка проверки (бот должен быть админом канала)");
+
+        const username = res.data.result.username;
+
+        db.run(
+            "INSERT INTO bots(user_id, token, username) VALUES(?,?,?)",
+            [ctx.from.id, token, username]
+        );
+
+        ctx.reply(
+            `✅ Бот подключен\n\n🤖 @${username}`
+        );
+
+    } catch {
+        ctx.reply("❌ Токен не работает");
     }
 });
 
 bot.launch();
+
 console.log("Bot started");
